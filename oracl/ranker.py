@@ -8,6 +8,8 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Sequence
 
 from openai import OpenAI
+from dotenv import load_dotenv
+load_dotenv()  
 
 
 @dataclass
