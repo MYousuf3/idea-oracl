@@ -43,6 +43,15 @@ wandb/
 runs/
 checkpoints/
 
+# Paper Collection Data
+data-collection/retrieved_papers/
+*.tar.gz
+*.pdf
+*.tex
+*.bib
+*/tar_files/
+*/extracted_files/
+
 # IDE
 .idea/
 .vscode/
