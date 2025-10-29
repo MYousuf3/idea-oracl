@@ -1,0 +1,40 @@
+name: idea-oracl
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - pip
+  - pytorch
+  - pytorch-cuda=11.8
+  - transformers
+  - datasets
+  - accelerate
+  - scipy
+  - numpy
+  - pandas
+  - scikit-learn
+  - matplotlib
+  - seaborn
+  - jupyter
+  - pip:
+    - vllm
+    - openreview-py
+    - bitsandbytes
+    - wandb  # for experiment tracking
+    - tensorboard
+    - peft  # for parameter efficient fine-tuning
+    - evaluate
+    - sentencepiece
+    - sacrebleu
+    - rouge-score
+    - nltk
+    - tqdm
+    - deepspeed
+    - gradio  # for creating demos
+    - torch-xla  # for TPU support if needed
+    - ray  # for distributed computing
+    - safetensors
+    - tokenizers
