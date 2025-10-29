@@ -38,3 +38,5 @@ dependencies:
     - ray  # for distributed computing
     - safetensors
     - tokenizers
+    - openai>=1.30
+    - python-dotenv>=1.0 
