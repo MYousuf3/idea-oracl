@@ -9,6 +9,9 @@ dependencies:
   - pip
   - pytorch
   - pytorch-cuda=11.8
+  - cmake
+  - c-compiler
+  - cxx-compiler
   - transformers
   - datasets
   - accelerate

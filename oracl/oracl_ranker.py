@@ -9,7 +9,12 @@ from typing import Any, Dict, List, Optional, Sequence
 
 from openai import OpenAI
 from dotenv import load_dotenv
-load_dotenv()  
+load_dotenv()
+
+try:
+    from .criteria_config import DEFAULT_CRITERIA, SYSTEM_PROMPT
+except ImportError:
+    from criteria_config import DEFAULT_CRITERIA, SYSTEM_PROMPT
 
 
 @dataclass
@@ -17,16 +22,19 @@ class Paper:
     id: str
     title: str
     idea: str
+    year: Optional[int] = None
 
 
 def _build_prompt(papers: Sequence[Paper], criteria: Sequence[str]) -> Dict[str, str]:
     joined_criteria = "\n".join(f"- {c}" for c in criteria)
     items = []
     for idx, p in enumerate(papers, start=1):
+        year_str = f"\n   year={p.year}" if p.year is not None else ""
         items.append(
             f"{idx}. id={p.id}\n"
             f"   title={p.title}\n"
             f"   idea={p.idea}"
+            f"{year_str}"
         )
     user = (
         "Produce a comparison-based total ranking of the papers below using the criteria.\n"
@@ -36,30 +44,20 @@ def _build_prompt(papers: Sequence[Paper], criteria: Sequence[str]) -> Dict[str,
         f"Criteria:\n{joined_criteria}\n\n"
         f"Papers:\n{os.linesep.join(items)}"
     )
-    system = (
-        "You are a rigorous research evaluator. Score fairly, avoid popularity bias,"
-        " and use present-day knowledge of real-world impact. Derive a clear total order"
-        " using direct comparisons rather than numeric scoring."
-    )
-    return {"system": system, "user": user}
+    return {"system": SYSTEM_PROMPT, "user": user}
 
 
 def rank_papers(
     papers: Sequence[Paper],
     criteria: Optional[Sequence[str]] = None,
     model: str = "gpt-5",
-    temperature: float = 0.2,
+    temperature: float = 1,
 ) -> List[Dict[str, Any]]:
     if not papers:
         return []
 
     if criteria is None or len(criteria) == 0:
-        criteria = (
-            "long-term scientific impact",
-            "real-world adoption and influence",
-            "methodological soundness and novelty",
-            "community consensus and reproducibility",
-        )
+        criteria = DEFAULT_CRITERIA
 
     client = OpenAI()
 
@@ -91,7 +89,7 @@ def rank_papers(
 
     prompts = _build_prompt(papers, criteria)
 
-    response = client.responses.create(
+    response = client.chat.completions.create(
         model=model,
         messages=[
             {"role": "system", "content": prompts["system"]},
@@ -101,18 +99,16 @@ def rank_papers(
         response_format={"type": "json_schema", "json_schema": schema},
     )
 
-    output_text = getattr(response, "output_text", None)
-    if not output_text:
-        # Fallback for older SDK shapes
-        try:
-            output_text = response.output[0].content[0].text
-        except Exception as exc:  # noqa: BLE001
-            raise RuntimeError(f"Unexpected response shape: {response}") from exc
+    # Extract the response content
+    try:
+        output_text = response.choices[0].message.content
+    except (AttributeError, IndexError, KeyError) as exc:
+        raise RuntimeError(f"Unexpected response shape: {response}") from exc
 
     try:
         data = json.loads(output_text)
-    except json.JSONDecodeError as exc:  # noqa: F841
-        raise ValueError("Model did not return valid JSON.")
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Model did not return valid JSON: {output_text}") from exc
 
     ranking = data.get("ranking", [])
 
@@ -178,28 +174,118 @@ def rank_papers_from_dicts(
     papers: Sequence[Dict[str, Any]],
     **kwargs: Any,
 ) -> List[Dict[str, Any]]:
+    # Create Paper objects using idea_abstract if available, otherwise idea
     as_objs = [
         Paper(
-            id=str(p["id"]),
+            id=str(p.get("id", p.get("submission_id", p.get("paper_id", "")))),
             title=str(p.get("title", "")),
-            idea=str(p["idea"]),
+            idea=str(p.get("idea_abstract", p.get("idea", ""))),
+            year=int(p["year"]) if "year" in p and p["year"] is not None else None,
         )
         for p in papers
     ]
-    return rank_papers(as_objs, **kwargs)
+    
+    # Get ranking from GPT
+    ranking_results = rank_papers(as_objs, **kwargs)
+    
+    # Create a map of original papers by their IDs for quick lookup
+    id_to_paper = {}
+    for p in papers:
+        pid = str(p.get("id", p.get("submission_id", p.get("paper_id", ""))))
+        id_to_paper[pid] = p
+    
+    # Merge ranking results with original paper data
+    enriched_results = []
+    for ranked_item in ranking_results:
+        pid = ranked_item["id"]
+        original_paper = id_to_paper.get(pid, {})
+        
+        # Start with all original fields
+        merged_item = dict(original_paper)
+        
+        # Add ranking-specific fields
+        merged_item["position"] = ranked_item["position"]
+        merged_item["rationale"] = ranked_item["rationale"]
+        
+        enriched_results.append(merged_item)
+    
+    return enriched_results
+
+
+def compute_default_output_path(input_path: str) -> str:
+    """
+    Compute output path for rankings.
+    Maps .../finished_data/<conf>/<year>/idea_abstracts*.json 
+    -> .../oracl/data/<conf>/<year>/ranked_papers.json
+    """
+    norm = os.path.normpath(input_path)
+    parts = norm.split(os.sep)
+    
+    # Extract conference and year from path
+    try:
+        idx = parts.index("finished_data")
+        base_parts = parts[:idx]  # Everything before finished_data
+        conf = parts[idx + 1] if len(parts) > idx + 1 else "unknown_conf"
+        year = parts[idx + 2] if len(parts) > idx + 2 else "unknown_year"
+        
+        # Find oracl directory in base path
+        if "oracl" in base_parts:
+            oracl_idx = base_parts.index("oracl")
+            base = os.sep.join(parts[:oracl_idx + 1])
+        else:
+            # Default to parent of finished_data
+            base = os.sep.join(base_parts)
+            base = os.path.join(base, "oracl")
+        
+        return os.path.join(base, "data", conf, year, "ranked_papers.json")
+    except (ValueError, IndexError):
+        # Fallback: save to oracl/data/
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        return os.path.join(script_dir, "data", "ranked_papers.json")
 
 
 if __name__ == "__main__":
-    # Minimal CLI example: read a JSON list of {id,title,idea}
     import argparse
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        description="Rank papers using GPT. Input: JSON with papers. Output: Ranked JSON with all original fields + position and rationale."
+    )
     parser.add_argument("input_json", help="Path to input JSON list of papers")
-    parser.add_argument("--model", default="gpt-5")
+    parser.add_argument(
+        "-o", "--output",
+        help="Output path for ranked JSON. If not provided, saves to oracl/data/<conf>/<year>/ranked_papers.json"
+    )
+    parser.add_argument("--model", default="gpt-5", help="OpenAI model to use (default: gpt-5)")
+    parser.add_argument(
+        "--criteria",
+        nargs="+",
+        help="Custom ranking criteria (space-separated). If not provided, uses default criteria."
+    )
     args = parser.parse_args()
 
     with open(args.input_json, "r", encoding="utf-8") as f:
         papers_dicts = json.load(f)
 
-    results = rank_papers_from_dicts(papers_dicts, model=args.model)
-    print(json.dumps(results, ensure_ascii=False, indent=2))
+    kwargs = {"model": args.model}
+    if args.criteria:
+        kwargs["criteria"] = args.criteria
+
+    results = rank_papers_from_dicts(papers_dicts, **kwargs)
+    
+    # Determine output path
+    if args.output:
+        output_path = args.output
+    else:
+        output_path = compute_default_output_path(args.input_json)
+    
+    # Ensure output directory exists
+    output_dir = os.path.dirname(output_path)
+    if output_dir:
+        os.makedirs(output_dir, exist_ok=True)
+    
+    # Write results
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(results, f, ensure_ascii=False, indent=2)
+    
+    print(f"Ranked {len(results)} papers")
+    print(f"Results saved to: {output_path}")
 

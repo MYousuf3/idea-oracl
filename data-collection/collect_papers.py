@@ -231,7 +231,7 @@ def main():
     # Conferences and years to process
     conferences = ['NeurIPS', 'ICLR', 'ICML']
     years = [2023, 2024]  # 2025 may not have papers available yet
-    max_papers = 3 # change this to download more than 3 papers 
+    max_papers = 15 # change this to download more than 3 papers 
     # Process each conference and year
     for conference in conferences:
         for year in years:

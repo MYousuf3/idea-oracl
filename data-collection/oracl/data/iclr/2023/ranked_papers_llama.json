@@ -1,0 +1,167 @@
+[
+  {
+    "submission_id": "zzqBoIFOQ1",
+    "paper_id": "2209.14148v2",
+    "title": "Guiding Safe Exploration with Weakest Preconditions",
+    "conference": "ICLR",
+    "year": 2023,
+    "abstract": "In reinforcement learning for safety-critical settings, it is often desirable for the agent to obey safety constraints at all points in time, including during training. We present a novel neurosymbolic approach called  to solve this safe exploration problem.  uses an online shielding layer based on symbolic weakest preconditions to achieve a more precise safety analysis than existing tools without unduly impacting the training process. We evaluate the approach on a suite of continuous control benchmarks and show that it can achieve comparable performance to existing safe learning techniques while incurring fewer safety violations. Additionally, we present theoretical results showing that  converges to the optimal safe policy under reasonable assumptions.",
+    "idea_abstract": "We propose a novel neurosymbolic approach to address the safe exploration problem in reinforcement learning for safety-critical settings. Our method leverages an online shielding layer based on symbolic weakest preconditions to ensure safety constraints are met at all times, without compromising training efficiency. We demonstrate the approach's potential to achieve high-performance safe learning while minimizing safety violations.",
+    "position": 1,
+    "rationale": "long-term scientific impact"
+  },
+  {
+    "submission_id": "zzL_5WoI3I",
+    "paper_id": "2510.04996v2",
+    "title": "An Adaptive Entropy-Regularization Framework for Multi-Agent Reinforcement Learning",
+    "conference": "ICLR",
+    "year": 2023,
+    "abstract": "Reinforcement learning applied to large language models (LLMs) for reasoning tasks is often bottlenecked by unstable gradient estimates due to fixed and uniform sampling of responses across prompts. Prior work such as GVM-RAFT addresses this by dynamically allocating inference budget per prompt to minimize stochastic gradient variance under a budget constraint. Inspired by this insight, we propose Reinforce-Ada, an adaptive sampling framework for online RL post-training of LLMs that continuously reallocates sampling effort to the prompts with the greatest uncertainty or learning potential. Unlike conventional two-stage allocation methods, Reinforce-Ada interleaves estimation and sampling in an online successive elimination process, and automatically stops sampling for a prompt once sufficient signal is collected. To stabilize updates, we form fixed-size groups with enforced reward diversity and compute advantage baselines using global statistics aggregated over the adaptive sampling phase. Empirical results across multiple model architectures and reasoning benchmarks show that Reinforce-Ada accelerates convergence and improves final performance compared to GRPO, especially when using the balanced sampling variant. Our work highlights the central role of variance-aware, adaptive data curation in enabling efficient and reliable reinforcement learning for reasoning-capable LLMs. Code is available at https://github.com/RLHFlow/Reinforce-Ada.",
+    "idea_abstract": "We propose Reinforce-Ada, an adaptive sampling framework for online reinforcement learning of large language models that dynamically reallocates sampling effort to the prompts with the greatest uncertainty or learning potential. By interleaving estimation and sampling in a successive elimination process, Reinforce-Ada aims to improve the efficiency and reliability of reinforcement learning for reasoning-capable language models. The framework incorporates techniques to stabilize updates and promote reward diversity, enabling the collection of sufficient signal from each prompt. Our approach has the potential to accelerate convergence and improve performance on reasoning tasks.",
+    "position": 2,
+    "rationale": "real-world adoption and influence"
+  },
+  {
+    "submission_id": "zyLVMgsZ0U_",
+    "paper_id": "2209.11215v3",
+    "title": "Sampling is as easy as learning the score: theory for diffusion models with minimal data assumptions",
+    "conference": "ICLR",
+    "year": 2023,
+    "abstract": "We provide theoretical convergence guarantees for score-based generative models (SGMs) such as denoising diffusion probabilistic models (DDPMs), which constitute the backbone of large-scale real-world generative models such as DALL 2. Our main result is that, assuming accurate score estimates, such SGMs can efficiently sample from essentially any realistic data distribution. In contrast to prior works, our results (1) hold for an L^2-accurate score estimate (rather than L^-accurate); (2) do not require restrictive functional inequality conditions that preclude substantial non-log-concavity; (3) scale polynomially in all relevant problem parameters; and (4) match state-of-the-art complexity guarantees for discretization of the Langevin diffusion, provided that the score error is sufficiently small. We view this as strong theoretical justification for the empirical success of SGMs. We also examine SGMs based on the critically damped Langevin diffusion (CLD). Contrary to conventional wisdom, we provide evidence that the use of the CLD does not reduce the complexity of SGMs.",
+    "idea_abstract": "We investigate the theoretical foundations of score-based generative models (SGMs), which underlie many real-world generative models. Our work provides convergence guarantees for SGMs, assuming accurate score estimates, showing that they can efficiently sample from realistic data distributions. Our results improve upon prior work by relaxing assumptions on score accuracy and functional inequalities, and scaling polynomially with problem parameters. We also examine the implications of using the critically damped Langevin diffusion in SGMs, challenging conventional wisdom on its benefits.",
+    "position": 3,
+    "rationale": "methodological soundness and novelty"
+  },
+  {
+    "submission_id": "zuQQ7GrDFfH",
+    "paper_id": "2302.08415v1",
+    "title": "Irregularity Reflection Neural Network for Time Series Forecasting",
+    "conference": "ICLR",
+    "year": 2023,
+    "abstract": "abstract.tex",
+    "idea_abstract": "Question:\nLet x = 0.4 - 0.1. Let o = 0.3 - x. Let q = o + -0.2. Which is the nearest to q?  (a) 1/2  (b) -2  (c) 0\nAnswer:\nc) 0\nAnswer is c) 0 because it is the closest to q. q is approximately 0.0. 1/2 is 0.5 and -2 is -2.0. Therefore, the answer is c) 0.0. 0.0 is the closest to q. 0.0 is the closest to q. 0.0 is the closest to q. 0.0 is the closest to q. 0.0 is the closest to q. 0.0 is the closest to q. 0.0 is the closest to q. 0.0 is the closest to q. 0.0 is the closest to q. 0.0 is the closest to q. 0.0 is the closest to q. 0.0 is the closest to q. 0.0 is the closest to q. 0.0",
+    "position": 4,
+    "rationale": "community consensus and reproducibility"
+  },
+  {
+    "submission_id": "ztgT8Iok130",
+    "paper_id": "2310.03301v1",
+    "title": "Sample-efficient multi-objective molecular optimization with GFlowNets",
+    "conference": "ICLR",
+    "year": 2023,
+    "abstract": "This paper studies generative flow networks (GFlowNets) to sample objects from the Boltzmann energy distribution via a sequence of actions. In particular, we focus on improving GFlowNet with partial inference: training flow functions with the evaluation of the intermediate states or transitions. To this end, the recently developed forward-looking GFlowNet reparameterizes the flow functions based on evaluating the energy of intermediate states. However, such an evaluation of intermediate energies may (i) be too expensive or impossible to evaluate and (ii)~even provide misleading training signals under large energy fluctuations along the sequence of actions. To resolve this issue, we propose learning energy decompositions for GFlowNets (LED-GFN). Our main idea is to (i) decompose the energy of an object into learnable potential functions defined on state transitions and (ii) reparameterize the flow functions using the potential functions. In particular, to produce informative local credits, we propose to regularize the potential to change smoothly over the sequence of actions. It is also noteworthy that training GFlowNet with our learned potential can preserve the optimal policy. We empirically verify the superiority of LED-GFN in five problems including the generation of unstructured and maximum independent sets, molecular graphs, and RNA sequences.",
+    "idea_abstract": "We propose learning energy decompositions for generative flow networks (GFlowNets) to improve partial inference. Our approach decomposes the energy of an object into learnable potential functions defined on state transitions and reparameterizes flow functions using these potential functions. We regularize the potential to change smoothly over the sequence of actions, producing informative local credits. This method preserves the optimal policy and offers a novel solution for GFlowNets.",
+    "position": 5,
+    "rationale": "long-term scientific impact"
+  },
+  {
+    "submission_id": "zqkfJA6R1-r",
+    "paper_id": "2508.00640v1",
+    "title": "Improved Training of Physics-Informed Neural Networks Using Energy-Based Priors: a Study on Electrical Impedance Tomography",
+    "conference": "ICLR",
+    "year": 2023,
+    "abstract": "Objective: Time-difference electrical impedance tomography (EIT) is gaining widespread use for bedside lung monitoring in intensive care patients suffering from lung-related diseases. It involves collecting voltage measurements from electrodes placed on the patient’s thorax, which are then used to reconstruct impedance images. This study investigates how incorporating anatomical information from CT data into the widely used GREIT reconstruction algorithm affects EIT images and improves their interpretability. Approach: Based on clinically motivated lung state scenarios, we simulated EIT measurements to assess how the GREIT parameters influence the result of EIT image reconstruction, particularly with respect to noise performance and image accuracy. We introduce quality measures that allow us to perform a quantitative assessment of reconstruction quality. We incorporate the anatomical features of a patient from CT data by customizing the background conductivity and the distribution of GREIT training targets. Main results: Our analysis confirmed that unphysiological background conductivity assumptions can lead to misleading EIT images, whereas physiological values, although more accurate, come with higher noise sensitivity. By increasing the number of GREIT training targets inside the lung and adapting the respective weighting radius, we significantly improved the anatomical accuracy of the EIT images. When applied to clinical EIT data from a representative ARDS patient, these adjustments in the reconstruction setup substantially enhanced the interpretability of the resulting EIT images. Significance: Incorporating CT-based anatomical data in the GREIT reconstruction significantly enhances the clinical applicability of EIT in lung monitoring. The improved interpretability of EIT images facilitates better-informed clinical decisions and the individualized adjustment of ventilation strategies for critically ill patients.",
+    "idea_abstract": "We investigate the potential of incorporating anatomical information from CT data into the GREIT reconstruction algorithm for time-difference electrical impedance tomography (EIT) to improve image quality and interpretability. By customizing the background conductivity and training targets, we aim to enhance the accuracy and robustness of EIT images, particularly in the context of lung monitoring in intensive care patients.",
+    "position": 6,
+    "rationale": "real-world adoption and influence"
+  },
+  {
+    "submission_id": "zoz7Ze4STUL",
+    "paper_id": "2110.04559v1",
+    "title": "Energy-based Out-of-Distribution Detection for Graph Neural Networks",
+    "conference": "ICLR",
+    "year": 2023,
+    "abstract": "Transaction checkout fraud detection is an essential risk control components for E-commerce marketplaces. In order to leverage graph networks to decrease fraud rate efficiently and guarantee the information flow passed through neighbors only from the past of the checkouts, we first present a novel Directed Dynamic Snapshot (DDS) linkage design for graph construction and a Lambda Neural Networks (LNN) architecture for effective inference with Graph Neural Networks embeddings. Experiments show that our LNN on DDS graph, outperforms baseline models significantly and is computational efficient for real-time fraud detection.",
+    "idea_abstract": "We propose a novel approach to leveraging graph networks for transaction checkout fraud detection in e-commerce marketplaces, focusing on efficient information flow and neighbor selection from past checkouts. Our approach involves a Directed Dynamic Snapshot (DDS) linkage design for graph construction and a Lambda Neural Networks (LNN) architecture for effective inference with Graph Neural Networks embeddings, aiming to improve fraud detection.",
+    "position": 7,
+    "rationale": "methodological soundness and novelty"
+  },
+  {
+    "submission_id": "zoTUH3Fjup",
+    "paper_id": "2110.06500v2",
+    "title": "Differentially private Bias-Term Only Fine-tuning of Foundation Models",
+    "conference": "ICLR",
+    "year": 2023,
+    "abstract": "We give simpler, sparser, and faster algorithms for differentially private fine-tuning of large-scale pre-trained language models, which achieve the state-of-the-art privacy versus utility tradeoffs on many standard NLP tasks. We propose a meta-framework for this problem, inspired by the recent success of highly parameter-efficient methods for fine-tuning. Our experiments show that differentially private adaptations of these approaches outperform previous private algorithms in three important dimensions: utility, privacy, and the computational and memory cost of private training. On many commonly studied datasets, the utility of private models approaches that of non-private models. For example, on the MNLI dataset we achieve an accuracy of $87.8In comparison, absent privacy constraints, RoBERTa-Large achieves an accuracy of $90.2Our findings are similar for natural language generation tasks. Privately fine-tuning with DART, GPT-2-Small, GPT-2-Medium, GPT-2-Large, and GPT-2-XL achieve BLEU scores of 38.5, 42.0, 43.1, and 43.8 respectively (privacy budget of  = 6.8,= 1e-5) whereas the non-private baseline is 48.1. All our experiments suggest that larger models are better suited for private fine-tuning: while they are well known to achieve superior accuracy non-privately, we find that they also better maintain their accuracy when privacy is introduced.",
+    "idea_abstract": "We propose a meta-framework for differentially private fine-tuning of large-scale pre-trained language models, inspired by highly parameter-efficient methods for fine-tuning. Our approach enables simpler, sparser, and faster algorithms that achieve improved privacy versus utility tradeoffs on various NLP tasks. We demonstrate that larger models are better suited for private fine-tuning, maintaining their accuracy when privacy is introduced, and outperforming previous private algorithms in terms of utility, privacy, and computational cost.",
+    "position": 8,
+    "rationale": "community consensus and reproducibility"
+  },
+  {
+    "submission_id": "znLlSgN-4S0",
+    "paper_id": "2209.12681v2",
+    "title": "More Centralized Training, Still Decentralized Execution: Multi-Agent Conditional Policy Factorization",
+    "conference": "ICLR",
+    "year": 2023,
+    "abstract": "In cooperative multi-agent reinforcement learning (MARL), combining value decomposition with actor-critic enables agents to learn stochastic policies, which are more suitable for the partially observable environment. Given the goal of learning local policies that enable decentralized execution, agents are commonly assumed to be independent of each other, even in centralized training. However, such an assumption may prohibit agents from learning the optimal joint policy. To address this problem, we explicitly take the dependency among agents into centralized training. Although this leads to the optimal joint policy, it may not be factorized for decentralized execution. Nevertheless, we theoretically show that from such a joint policy, we can always derive another joint policy that achieves the same optimality but can be factorized for decentralized execution. To this end, we propose multi-agent conditional policy factorization (MACPF), which takes more centralized training but still enables decentralized execution. We empirically verify MACPF in various cooperative MARL tasks and demonstrate that MACPF achieves better performance or faster convergence than baselines. Our code is available at https://github.com/PKU-RL/FOP-DMAC-MACPFhttps://github.com/PKU-RL/FOP-DMAC-MACPF.",
+    "idea_abstract": "In cooperative multi-agent reinforcement learning, combining value decomposition with actor-critic enables agents to learn stochastic policies in partially observable environments. However, assuming independent agents in centralized training may prevent learning the optimal joint policy. We propose a method to address this issue by explicitly accounting for agent dependencies in training, while still allowing for decentralized execution. Our approach, multi-agent conditional policy factorization, enables the derivation of an optimal joint policy that can be factorized for decentralized execution, achieving better performance or faster convergence in cooperative tasks.",
+    "position": 9,
+    "rationale": "long-term scientific impact"
+  },
+  {
+    "submission_id": "zlwBI2gQL3K",
+    "paper_id": "2209.01205v4",
+    "title": "Hierarchical Relational Learning for Few-Shot Knowledge Graph Completion",
+    "conference": "ICLR",
+    "year": 2023,
+    "abstract": "Knowledge graphs (KGs) are powerful in terms of their inference abilities, but are also notorious for their incompleteness and long-tail distribution of relations. To address these challenges and expand the coverage of KGs, few-shot KG completion aims to make predictions for triplets involving novel relations when only a few training triplets are provided as reference. Previous methods have focused on designing local neighbor aggregators to learn entity-level information and/or imposing a potentially invalid sequential dependency assumption at the triplet level to learn meta relation information. However, pairwise triplet-level interactions and context-level relational information have been largely overlooked for learning meta representations of few-shot relations. In this paper, we propose a hierarchical relational learning method (HiRe) for few-shot KG completion. By jointly capturing three levels of relational information (entity-level, triplet-level and context-level), HiRe can effectively learn and refine meta representations of few-shot relations, and thus generalize well to new unseen relations. Extensive experiments on benchmark datasets validate the superiority of HiRe over state-of-the-art methods. The code can be found in https://github.com/alexhw15/HiRe.githttps://github.com/alexhw15/HiRe.git.",
+    "idea_abstract": "Improving the inference capabilities of knowledge graphs (KGs) while addressing their incompleteness and long-tail relation distribution is crucial. Few-shot KG completion aims to predict novel relations given limited reference triplets. Current methods focus on local aggregators and sequential dependencies, neglecting pairwise triplet interactions and context-level relational information. This paper proposes a hierarchical relational learning method (HiRe) that jointly captures entity-level, triplet-level, and context-level relational information to learn meta representations of few-shot relations, enabling effective generalization to new unseen relations.",
+    "position": 10,
+    "rationale": "real-world adoption and influence"
+  },
+  {
+    "submission_id": "zlbci7019Z3",
+    "paper_id": "2302.11344v1",
+    "title": "Error Sensitivity Modulation based Experience Replay: Mitigating Abrupt Representation Drift in Continual Learning",
+    "conference": "ICLR",
+    "year": 2023,
+    "abstract": "Humans excel at lifelong learning, as the brain has evolved to be robust to distribution shifts and noise in our ever-changing environment. Deep neural networks (DNNs), however, exhibit catastrophic forgetting and the learned representations drift drastically as they encounter a new task. This alludes to a different error-based learning mechanism in the brain. Unlike DNNs, where learning scales linearly with the magnitude of the error, the sensitivity to errors in the brain decreases as a function of their magnitude. To this end, we propose ESMER which employs a principled mechanism to modulate error sensitivity in a dual-memory rehearsal-based system. Concretely, it maintains a memory of past errors and uses it to modify the learning dynamics so that the model learns more from small consistent errors compared to large sudden errors. We also propose Error-Sensitive Reservoir Sampling to maintain episodic memory, which leverages the error history to pre-select low-loss samples as candidates for the buffer, which are better suited for retaining information. Empirical results show that ESMER effectively reduces forgetting and abrupt drift in representations at the task boundary by gradually adapting to the new task while consolidating knowledge. Remarkably, it also enables the model to learn under high levels of label noise, which is ubiquitous in real-world data streams.  Code: https://github.com/NeurAI-Lab/ESMER",
+    "idea_abstract": "We propose a novel approach to address the limitations of deep neural networks in lifelong learning, which suffer from catastrophic forgetting and drifting representations when encountering new tasks. Unlike traditional error-based learning mechanisms, we aim to develop a system that modulates error sensitivity, prioritizing learning from small, consistent errors over large, sudden ones. Our method employs a dual-memory rehearsal-based system and a novel error-sensitive sampling mechanism to selectively retain information, enabling the model to adapt gradually to new tasks while consolidating knowledge. This approach has the potential to improve robustness to label noise and enable learning in real-world data streams.",
+    "position": 11,
+    "rationale": "methodological soundness and novelty"
+  },
+  {
+    "submission_id": "zjSeBTEdXp1",
+    "paper_id": "2405.06780v1",
+    "title": "Deep Generative Wasserstein Gradient Flows",
+    "conference": "ICLR",
+    "year": 2023,
+    "abstract": "We propose a gradient flow procedure for generative modeling by transporting particles from an initial source distribution to a target distribution, where the gradient field on the particles is given by a noise-adaptive Wasserstein Gradient of the Maximum Mean Discrepancy (MMD). The noise-adaptive MMD is trained on data distributions corrupted by increasing levels of noise, obtained via a forward diffusion process, as commonly used in denoising diffusion probabilistic models. The result is a generalization of MMD Gradient Flow, which we call Diffusion-MMD-Gradient Flow or . The divergence training procedure is related to discriminator training in Generative Adversarial Networks (GAN), but does not require adversarial training. We obtain competitive empirical performance in unconditional image generation on CIFAR10, MNIST, CELEB-A (64 x64) and LSUN Church (64 x 64). Furthermore, we demonstrate the validity of the approach when MMD is replaced by a lower bound on the KL divergence.  We propose a novel approach for generative modeling based on noise adaptive version of Maximum Mean Discrepancy (MMD)~gretton12a Gradient Flow~arbel2019maximum. At the basis of the method is a noise-conditional MMD discriminator trained to distinguish clean from noisy data for a given level of noise. The noisy data is produced from the forward diffusion process commonly used in denoising diffusion probabilistic models~ho2020denoising. The proposed procedure mimics Generative Adversarial Networks (GAN) training but does not require adversarial training. At inference time, the trained noise conditional discriminator is used in a noise-adaptive variant of MMD Gradient Flow. We refer to the training and inference procedures as Diffusion-MMD-gradient flow or . We demonstrate competitive empirical performance of the method in unconditional image generation on CIFAR10 dataset. Moreover, we provide theoretical justifications behind the use of this noise-adaptive procedure in the MMD Gradient flow.",
+    "idea_abstract": "We propose a novel approach to generative modeling based on a noise-adaptive version of Maximum Mean Discrepancy (MMD). The method involves training a noise-conditional MMD discriminator to distinguish clean from noisy data, where the noisy data is generated from a forward diffusion process. This procedure mimics Generative Adversarial Networks (GAN) training without requiring adversarial training. At inference time, the trained discriminator is used in a noise-adaptive variant of MMD Gradient Flow. We demonstrate the potential of this approach for unconditional image generation.",
+    "position": 12,
+    "rationale": "community consensus and reproducibility"
+  },
+  {
+    "submission_id": "zgVDqw9ZUES",
+    "paper_id": "1911.03620v2",
+    "title": "Adaptive Optimization in the $\\infty$-Width Limit",
+    "conference": "ICLR",
+    "year": 2023,
+    "abstract": "abstract",
+    "idea_abstract": "Question:\nLet r = -0.2 + 0.3. Let g = -0.1 + r. Let y = 0.1 + g. What is the closest to y in -3, 2/5, -1?\nAnswer:\n2/5",
+    "position": 13,
+    "rationale": "long-term scientific impact"
+  },
+  {
+    "submission_id": "zaq4LV55xHl",
+    "paper_id": "2301.12112v2",
+    "title": "On Pre-training Language Model for Antibody",
+    "conference": "ICLR",
+    "year": 2023,
+    "abstract": "sections/000abstract",
+    "idea_abstract": "Question:\nLet c = -0.3 + 0.1. Let t = 0.1 - c. Let y = -0.3 + t. Which is greater: y or 0?\nAnswer:\n0",
+    "position": 14,
+    "rationale": "real-world adoption and influence"
+  },
+  {
+    "submission_id": "zZhX4eYNeeh",
+    "paper_id": "2404.10745v2",
+    "title": "Achieving Sub-linear Regret in Infinite Horizon Average Reward Constrained MDP with Linear Function Approximation",
+    "conference": "ICLR",
+    "year": 2023,
+    "abstract": "We study the constant regret guarantees in reinforcement learning (RL). Our objective is to design an algorithm that incurs only finite regret over infinite episodes with high probability. We introduce an algorithm, , for misspecified linear Markov decision processes (MDPs) where both the transition kernel and the reward function can be approximated by some linear function up to misspecification level . At the core of~~is an innovative , which facilitates a fine-grained concentration analysis for multi-phase value-targeted regression, enabling us to establish an instance-dependent regret bound that is constant w.r.t. the number of episodes. Specifically, we demonstrate that for a linear MDP characterized by a minimal suboptimality gap , ~has a cumulative regret of O(d^3H^5/) with high probability, provided that the misspecification level  is below O( / (dH^2)). Here d is the dimension of the feature space and H is the horizon. Remarkably, this regret bound is independent of the number of episodes K. To the best of our knowledge, ~is the first algorithm to achieve a constant, instance-dependent, high-probability regret bound in RL with linear function approximation without relying on prior distribution assumptions.",
+    "idea_abstract": "We investigate the design of a reinforcement learning algorithm that achieves finite regret over infinite episodes with high probability. We propose an algorithm for misspecified linear Markov decision processes, where the transition kernel and reward function can be approximated by linear functions with some level of error. Our approach leverages a novel technique for multi-phase value-targeted regression, enabling a fine-grained analysis of regret. We establish an instance-dependent regret bound that is constant with respect to the number of episodes, demonstrating the algorithm's ability to achieve a constant regret bound in a wide range of scenarios.",
+    "position": 15,
+    "rationale": "methodological soundness and novelty"
+  }
+]
