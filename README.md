@@ -83,3 +83,53 @@ idea-oracl/
 ├── environment.yml                 # Conda environment specification
 └── README.md
 ```
+
+## Pipeline: proposals, ranking and metrics
+
+The following steps extend the collection/extraction pipeline to generate compact proposals for each paper, run the ranker using those proposals, and compute simple metrics comparing the new ordering to the original `rank` field.
+
+4. Generate proposals
+
+- Script: `data-collection/idea_extrapolation_llama.py` (and `..._backtest.py` for the backtest set)
+- What it does: reads extracted papers (with `abstract` and optionally cleaned `content`) and generates a short `proposal` field for each paper. The result is written as a JSON list (for backtest: `oracl/data/backtest/idea_abstracts_llama.json`).
+- Why: proposals are compact, focused prompts the ranker uses instead of the full paper content to improve stability and avoid large prompt sizes.
+
+Example:
+
+```bash
+python3 data-collection/idea_extrapolation_llama_backtest.py
+```
+
+5. Rank using proposals
+
+- Script: `oracl/oracl_ranker.py`
+- What it does: loads a JSON list of papers (expects `title`, `idea_abstract`, ideally `proposal`), builds a prompt using the `proposal` field (deliberately excluding `content`), calls the LLM using a strict JSON schema, and post-processes the returned ranking.
+- Important behaviors:
+	- If an input `id` is missing the ranker computes a stable fallback id (prefers `id` → `arxiv` or `paper_tar` → `paper_<index>`).
+	- Model-returned ids that do not match any input id are ignored (this filters hallucinated items like invented ids).
+	- Duplicate ids from the model are deduplicated; omitted input papers are appended so the final output is a full total order.
+	- The ranker no longer depends on `retrieved_papers/backtest/ranks_codes.json` — it ranks purely on the supplied input list.
+
+Example (backtest):
+
+```bash
+cd oracl
+python3 oracl_ranker.py
+```
+
+Output: `oracl/data/backtest/ranked_papers.json`
+
+6. Compute ranking metrics
+
+- Script: `tools/compute_rank_metrics.py`
+- What it does: compares each paper's original `rank` to the ranker's `position` and prints summary statistics and top movers.
+- Metrics include: mean signed difference, mean absolute difference, mean squared difference (MSE), median absolute difference, max absolute difference, number unchanged, and top movers by absolute change.
+
+Usage:
+
+```bash
+python3 tools/compute_rank_metrics.py oracl/data/backtest/ranked_papers.json
+```
+
+The script is dependency-free and prints a human-readable summary to stdout. If you want CSV/JSON export, RMSE, or correlation statistics, we can add flags for those.
+
