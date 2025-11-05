@@ -134,13 +134,80 @@ def extract_abstract_from_tar(tar_path):
                 print(f"Error reading {main_tex}: {e}")
                 return None
             
-            # Extract abstract
+            # Extract abstract and return cleaned full content as well
             abstract = extract_abstract_from_latex(latex_content)
-            return abstract
+            cleaned_content = clean_full_latex(latex_content)
+            return abstract, cleaned_content
             
     except Exception as e:
         print(f"Error extracting from {tar_path}: {e}")
-        return None
+        return None, None
+
+
+def clean_full_latex(latex_content: str) -> str:
+    """
+    Produce a cleaned, plain-text version of the LaTeX source suitable for
+    storing as `content`. This removes floats, listings, bibliographies,
+    math, figures, and most LaTeX commands while preserving readable text.
+    """
+    if not latex_content:
+        return ""
+
+    s = latex_content
+
+    # Remove comments
+    s = re.sub(r'%.*$', '', s, flags=re.MULTILINE)
+
+    # Remove common float/listing environments that are non-content
+    remove_envs = [
+        'figure', 'figure\*', 'table', 'table\*', 'lstlisting', 'algorithm',
+        'align', 'align\*', 'equation', 'equation\*', 'thebibliography',
+        'tikzpicture', 'tabular', 'verbatim', 'sidewaysfigure', 'sidebar'
+    ]
+    for env in remove_envs:
+        s = re.sub(rf'\\begin\{{{env}\}}.*?\\end\{{{env}\}}', '', s, flags=re.DOTALL | re.IGNORECASE)
+
+    # Remove includegraphics and other file includes
+    s = re.sub(r'\\includegraphics\[.*?\]\{.*?\}', '', s)
+    s = re.sub(r'\\includegraphics\{.*?\}', '', s)
+    s = re.sub(r'\\(input|include)\{.*?\}', '', s)
+
+    # Remove bibliography commands
+    s = re.sub(r'\\bibliography\{.*?\}', '', s)
+    s = re.sub(r'\\bibliographystyle\{.*?\}', '', s)
+    s = re.sub(r'\\printbibliography', '', s)
+
+    # Remove citation commands
+    s = re.sub(r'\\cite[t|p|alp|author|year]?\*?(?:\[.*?\])?\{.*?\}', '', s)
+
+    # Remove labels, refs, and footnotes
+    s = re.sub(r'\\label\{.*?\}', '', s)
+    s = re.sub(r'\\ref\{.*?\}', '', s)
+    s = re.sub(r'\\footnote\{.*?\}', '', s)
+
+    # Remove displayed and inline math
+    s = re.sub(r'\$\$(.*?)\$\$', '', s, flags=re.DOTALL)
+    s = re.sub(r'\$(.*?)\$', '', s, flags=re.DOTALL)
+    s = re.sub(r'\\\[(.*?)\\\]', '', s, flags=re.DOTALL)
+    s = re.sub(r'\\\((.*?)\\\)', '', s, flags=re.DOTALL)
+
+    # Remove begin/end markers left over
+    s = re.sub(r'\\begin\{.*?\}', '', s)
+    s = re.sub(r'\\end\{.*?\}', '', s)
+
+    # Replace common sectioning commands with their title text
+    s = re.sub(r'\\(?:section|subsection|subsubsection|paragraph|chapter)\*?\{(.*?)\}', r'\1', s)
+
+    # Keep formatting commands' content (textbf, emph, etc.) and remove others
+    s = clean_latex_text(s)
+
+    # Collapse multiple newlines and whitespace
+    s = re.sub(r'\r\n|\r', '\n', s)
+    s = re.sub(r'\n\s*\n+', '\n\n', s)
+    s = re.sub(r'[ \t]+', ' ', s)
+    s = s.strip()
+
+    return s
 
 def process_conference_year(base_path, conference, year):
     """
@@ -168,8 +235,8 @@ def process_conference_year(base_path, conference, year):
     failed_count = 0
     
     for paper in tqdm(papers_data, desc=f"Extracting abstracts for {conference} {year}"):
-        # Skip if abstract already exists
-        if 'abstract' in paper and paper['abstract']:
+        # Skip processing if both abstract and content already exist
+        if ('abstract' in paper and paper['abstract']) and ('content' in paper and paper['content']):
             continue
         
         paper_id = paper.get('paper_id')
@@ -186,14 +253,21 @@ def process_conference_year(base_path, conference, year):
             failed_count += 1
             continue
         
-        # Extract abstract
-        abstract = extract_abstract_from_tar(tar_file_path)
-        
+        # Extract abstract and full content
+        abstract, content = extract_abstract_from_tar(tar_file_path)
+
+        if content:
+            paper['content'] = content
+        else:
+            paper['content'] = ""
+
         if abstract:
             paper['abstract'] = abstract
             updated_count += 1
         else:
-            paper['abstract'] = ""
+            # preserve existing abstract if present, otherwise set empty string
+            if not paper.get('abstract'):
+                paper['abstract'] = ""
             print(f"Could not extract abstract for {paper.get('title', 'Unknown')}")
             failed_count += 1
     

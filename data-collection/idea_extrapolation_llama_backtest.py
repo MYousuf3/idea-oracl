@@ -13,16 +13,24 @@ from vllm import LLM, SamplingParams
 # Set to an integer >= 1 to force number of GPUs (tensor parallel size).
 # Leave as None to auto-detect based on CUDA_VISIBLE_DEVICES or torch.cuda.
 TENSOR_PARALLEL_SIZE_OVERRIDE = 8
-# GPU COUNT
 
-def load_records(input_path: str) -> List[Dict[str, Any]]:
+
+def load_records(input_path: str, ranks_path: str) -> List[Dict[str, Any]]:
+    # Load backtest paper list
+    with open(ranks_path, "r") as f:
+        backtest_papers = json.load(f)
+    backtest_titles = {p["title"]: True for p in backtest_papers}
+    
+    # Load and filter papers
     with open(input_path, "r") as f:
         data = json.load(f)
-    if isinstance(data, list):
-        return data
     if isinstance(data, dict) and isinstance(data.get("data"), list):
-        return data["data"]
-    raise ValueError("Input JSON must be a list of records or contain a 'data' list")
+        data = data["data"]
+    elif not isinstance(data, list):
+        raise ValueError("Input JSON must be a list of records or contain a 'data' list")
+    
+    # Only keep papers in the backtest set
+    return [p for p in data if p.get("title", "") in backtest_titles]
 
 
 def save_records(records: List[Dict[str, Any]], output_path: str) -> None:
@@ -32,8 +40,8 @@ def save_records(records: List[Dict[str, Any]], output_path: str) -> None:
     with open(output_path, "w") as f:
         json.dump(records, f, indent=2, ensure_ascii=False)
 
+
 def build_prompt(title: str, abstract: str) -> str:
-    """Build a Llama 3.1 instruct-style prompt for idea abstract generation"""
     definition = (
         "We define an 'idea abstract' as a version of the original abstract that "
         "deliberately omits specific results, implementation details, and performance metrics, "
@@ -44,12 +52,11 @@ def build_prompt(title: str, abstract: str) -> str:
         "Do not include any numbers, dataset sizes, epochs, hyperparameters, training or implementation details, "
         "or benchmark-specific scores. Keep the core problem, method, and novelty. Write concise, clear prose. "
         "Output only the rewritten idea abstract, without any preamble or explanation."
-)
-    
-    # Llama 3.1 Instruct format (no title in the user message)
+    )
+
     system_message = f"{definition}\n\n{instructions}"
     user_message = f"Abstract: {abstract}\n\nIdea abstract:"
-    
+
     prompt = f"""<|begin_of_text|><|start_header_id|>system<|end_header_id|>
 
 {system_message}<|eot_id|><|start_header_id|>user<|end_header_id|>
@@ -60,8 +67,7 @@ def build_prompt(title: str, abstract: str) -> str:
     return prompt
 
 
-def build_prompt_proposal(title: str, abstract: str) -> str:
-    """Build a Llama 3.1 instruct-style prompt for idea proposal generation"""
+def build_prompt_proposal(title: str, content: str) -> str:
     definition = (
         "We define an 'idea abstract' as a version of the original abstract that "
         "deliberately omits specific results, implementation details, and performance metrics, "
@@ -78,15 +84,11 @@ def build_prompt_proposal(title: str, abstract: str) -> str:
         "2. Problem Statement: Clearly define the problem your research intends to address. Explain clearly why this problem is interesting and important."
         "3. Motivation: Explain why existing methods are not good enough to solve the problem, and explain the inspiration behind the new proposed method. You should also motivate why the proposed method would work better than existing baselines on the problem."
         "4. Proposed Method: Explain how the proposed method works, describe all the essential steps."
-            # "5. Step-by-Step Experiment Plan: Break down every single step of the experiments, make sure every step is executable. Cover all essential details such as the datasets, models, and metrics to be used. If the project involves prompting, give some example prompts for each step."
     )
-    
-    # Llama 3.1 Instruct format (no title in the user message)
+
     system_message = f"{definition}\n\n{instructions}"
-    # We pass the full paper content (when available) into this prompt as the
-    # second argument; label it 'Paper content' to avoid confusion.
-    user_message = f"Paper content: {abstract}\n\nProposal:"
-    
+    user_message = f"Paper content: {content}\n\nProposal:"
+
     prompt = f"""<|begin_of_text|><|start_header_id|>system<|end_header_id|>
 
 {system_message}<|eot_id|><|start_header_id|>user<|end_header_id|>
@@ -105,10 +107,8 @@ def generate_idea_abstracts(
     temperature: float,
     top_p: float,
 ) -> List[str]:
-    # Create tokenizer to get EOS id
     tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
 
-    # Use Ray backend for multi-GPU to avoid multiprocessing fork issues
     distributed_backend = "ray" if tensor_parallel_size > 1 else None
 
     llm = LLM(
@@ -136,7 +136,7 @@ def generate_idea_abstracts(
         abstract = rec.get("abstract") or ""
         content = rec.get("content") or ""
 
-        # Determine if abstract is usable for idea generation
+        # Determine if abstract is usable
         abstract_placeholder = False
         if not abstract:
             abstract_placeholder = True
@@ -147,9 +147,7 @@ def generate_idea_abstracts(
             elif len(abstract.strip()) < 20:
                 abstract_placeholder = True
 
-        # For proposal generation prefer the full cleaned content when available,
-        # otherwise fall back to the abstract. Only use a non-empty, non-placeholder
-        # input for proposals.
+        # For proposal prefer full content, else fallback to abstract
         proposal_input = content if (content and len(content.strip()) >= 20) else abstract
         proposal_placeholder = False
         if not proposal_input:
@@ -161,7 +159,6 @@ def generate_idea_abstracts(
             elif len(proposal_input.strip()) < 20:
                 proposal_placeholder = True
 
-        # Build prompts: idea uses only the abstract; proposal uses full content when present
         if not abstract_placeholder:
             idea_prompts.append(build_prompt(title, abstract))
         else:
@@ -183,12 +180,11 @@ def generate_idea_abstracts(
     for out in proposal_outputs:
         text = out.outputs[0].text if out.outputs else ""
         proposal_results.append(text.strip())
-    
+
     return idea_results, proposal_results
 
 
 def detect_gpu_count() -> int:
-    # Respect CUDA_VISIBLE_DEVICES if set
     cuda_visible = os.environ.get("CUDA_VISIBLE_DEVICES")
     if cuda_visible is not None:
         try:
@@ -196,60 +192,42 @@ def detect_gpu_count() -> int:
             return max(1, count)
         except Exception:
             pass
-    # Avoid importing torch in the parent process to prevent CUDA init before spawn
     return 1
-
-
-def compute_default_output_path(input_path: str) -> str:
-    # Map .../retrieved_papers/<conf>/<year>/papers.json -> .../finished_data/<conf>/<year>/idea_abstracts.json
-    norm = os.path.normpath(input_path)
-    parts = norm.split(os.sep)
-    try:
-        idx = parts.index("retrieved_papers")
-        base = os.sep.join(parts[:idx])
-        conf = parts[idx + 1] if len(parts) > idx + 1 else "unknown_conf"
-        year = parts[idx + 2] if len(parts) > idx + 2 else "unknown_year"
-        return os.path.join(base, "finished_data", conf, year, "idea_abstracts_llama.json")
-    except ValueError:
-        # Fallback: put next to input under finished_data
-        base = os.path.dirname(os.path.dirname(norm))
-        return os.path.join(base, "finished_data", "idea_abstracts_llama.json")
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(
         description=(
-            "Generate 'idea abstracts' from {id, title, abstract, year} records using vLLM and Llama 3.1 8B Instruct."
+            "Generate 'idea abstracts' and proposals for backtest papers using vLLM and Llama 3.1 8B Instruct."
         )
     )
-    # NOTE: input and output paths are hardcoded below. We keep other flags configurable.
     parser.add_argument(
         "--model",
         default="meta-llama/Llama-3.1-8B-Instruct",
         help="HF model name or path. Default: meta-llama/Llama-3.1-8B-Instruct",
     )
-    # GPU count is now controlled in-code via TENSOR_PARALLEL_SIZE_OVERRIDE
-    parser.add_argument("--max-new-tokens", type=int, default=4096)
+    parser.add_argument("--max-new-tokens", type=int, default=256)
     parser.add_argument("--temperature", type=float, default=0.3)
     parser.add_argument("--top-p", type=float, default=0.9)
 
     args = parser.parse_args()
 
-    # Use in-code override or auto-detect
     tps = TENSOR_PARALLEL_SIZE_OVERRIDE if TENSOR_PARALLEL_SIZE_OVERRIDE is not None else detect_gpu_count()
     if tps is None or tps < 1:
         raise ValueError("Number of GPUs must be >= 1. Set TENSOR_PARALLEL_SIZE_OVERRIDE or ensure CUDA is visible.")
-    # Hardcoded input/output paths per user request.
-    # Input: data-collection/retrieved_papers/iclr/2024/papers.json
-    # Output dir: oracl/data/iclr/2024 -> file will be written as idea_abstracts_llama.json
-    # NOTE: the repository contains an `oracl` directory (not `oracle`) — assuming that's intended.
+
+    # Hardcoded backtest input/output
     repo_root = os.path.dirname(os.path.dirname(__file__))
-    input_path = os.path.join(os.path.dirname(__file__), "retrieved_papers", "iclr", "2024", "papers.json")
-    output_dir = os.path.join(repo_root, "oracl", "data", "iclr", "2024")
+    input_path = os.path.join(os.path.dirname(__file__), "retrieved_papers", "backtest", "papers.json")
+    ranks_path = os.path.join(os.path.dirname(__file__), "retrieved_papers", "backtest", "ranks_codes.json")
+    output_dir = os.path.join(repo_root, "oracl", "data", "backtest")
     os.makedirs(output_dir, exist_ok=True)
     out_path = os.path.join(output_dir, "idea_abstracts_llama.json")
 
-    records = load_records(input_path)
+    records = load_records(input_path, ranks_path)
+    
+    if len(records) != 20:
+        raise ValueError(f"Expected exactly 20 backtest papers, but found {len(records)}. Check papers.json and ranks_codes.json match.")
 
     idea_generations, proposal_generations = generate_idea_abstracts(
         records=records,
@@ -273,4 +251,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

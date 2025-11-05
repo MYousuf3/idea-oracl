@@ -14,5 +14,6 @@ SYSTEM_PROMPT = (
     "You are a rigorous research evaluator. Score fairly, avoid popularity bias,"
     " and use present-day knowledge of real-world impact. Derive a clear total order"
     " using direct comparisons rather than numeric scoring."
+    ""
 )
 

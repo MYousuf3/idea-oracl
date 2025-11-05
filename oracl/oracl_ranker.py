@@ -22,6 +22,7 @@ class Paper:
     id: str
     title: str
     idea: str
+    proposal: Optional[str] = None
     year: Optional[int] = None
 
 
@@ -30,10 +31,14 @@ def _build_prompt(papers: Sequence[Paper], criteria: Sequence[str]) -> Dict[str,
     items = []
     for idx, p in enumerate(papers, start=1):
         year_str = f"\n   year={p.year}" if p.year is not None else ""
+        # Provide the proposal as additional context to the ranker when available.
+        # Deliberately exclude full paper 'content' from the prompt.
+        proposal_str = f"\n   proposal={p.proposal}" if p.proposal else ""
         items.append(
             f"{idx}. id={p.id}\n"
             f"   title={p.title}\n"
             f"   idea={p.idea}"
+            f"{proposal_str}"
             f"{year_str}"
         )
     user = (
@@ -174,39 +179,89 @@ def rank_papers_from_dicts(
     papers: Sequence[Dict[str, Any]],
     **kwargs: Any,
 ) -> List[Dict[str, Any]]:
+    # Rank directly from the provided papers list. Do NOT consult any external
+    # ranks_codes.json — ranking should be based purely on the proposals supplied
+    # in the input `papers` list.
+
+    # Helper to compute a stable id for a paper when none is provided.
+    def _compute_pid(p: Dict[str, Any], idx: int) -> str:
+        # Prefer explicit ids, then commonly present fields, then fall back to an index-based id
+        cand = p.get("id") or p.get("submission_id") or p.get("paper_id")
+        if cand:
+            return str(cand)
+        cand = p.get("arxiv") or p.get("paper_tar")
+        if cand:
+            return str(cand)
+        # Last resort: use a stable generated id based on position
+        return f"paper_{idx}"
+
     # Create Paper objects using idea_abstract if available, otherwise idea
-    as_objs = [
-        Paper(
-            id=str(p.get("id", p.get("submission_id", p.get("paper_id", "")))),
-            title=str(p.get("title", "")),
-            idea=str(p.get("idea_abstract", p.get("idea", ""))),
-            year=int(p["year"]) if "year" in p and p["year"] is not None else None,
-        )
-        for p in papers
-    ]
-    
+    as_objs: List[Paper] = []
+    for i, p in enumerate(papers, start=1):
+        pid = _compute_pid(p, i)
+        title = str(p.get("title", ""))
+        idea = str(p.get("idea_abstract", p.get("idea", "")))
+        proposal = str(p.get("proposal", "")) if "proposal" in p and p.get("proposal") is not None else None
+        year = int(p["year"]) if "year" in p and p["year"] is not None else None
+
+        as_objs.append(Paper(id=pid, title=title, idea=idea, proposal=proposal, year=year))
+
     # Get ranking from GPT
     ranking_results = rank_papers(as_objs, **kwargs)
-    
+
     # Create a map of original papers by their IDs for quick lookup
-    id_to_paper = {}
-    for p in papers:
-        pid = str(p.get("id", p.get("submission_id", p.get("paper_id", ""))))
+    id_to_paper: Dict[str, Dict[str, Any]] = {}
+    provided_ids_order: List[str] = []
+    for i, p in enumerate(papers, start=1):
+        pid = _compute_pid(p, i)
         id_to_paper[pid] = p
+        provided_ids_order.append(pid)
+
+    # Filter ranking results to only include known IDs and drop duplicates
+    filtered_ranked = []
+    seen_ids = set()
+    for item in ranking_results:
+        rid = str(item.get("id", ""))
+        if rid in seen_ids:
+            # skip duplicate id entries from model
+            continue
+        if rid in id_to_paper:
+            filtered_ranked.append(item)
+            seen_ids.add(rid)
+        else:
+            # ignore model-invented or unknown ids (e.g., DetectGPT) to keep only real papers
+            continue
     
+    # Append any missing provided ids (model omitted them)
+    present_ids = {it.get("id") for it in filtered_ranked}
+    for pid in provided_ids_order:
+        if pid not in present_ids:
+            # append placeholder entry for missing items
+            filtered_ranked.append({
+                "position": None,
+                "id": pid,
+                "title": id_to_paper.get(pid, {}).get("title", ""),
+                "rationale": "Appended to complete total order (model omitted item).",
+            })
+
+    # Reassign positions to ensure 1..N in the order we want
+    for i, item in enumerate(filtered_ranked, start=1):
+        item["position"] = i
+
     # Merge ranking results with original paper data
     enriched_results = []
-    for ranked_item in ranking_results:
+    for ranked_item in filtered_ranked:
         pid = ranked_item["id"]
         original_paper = id_to_paper.get(pid, {})
-        
-        # Start with all original fields
+        # Start with all original fields but explicitly remove full 'content' if present
         merged_item = dict(original_paper)
-        
+        if "content" in merged_item:
+            merged_item.pop("content", None)
+
         # Add ranking-specific fields
         merged_item["position"] = ranked_item["position"]
-        merged_item["rationale"] = ranked_item["rationale"]
-        
+        merged_item["rationale"] = ranked_item.get("rationale", "")
+
         enriched_results.append(merged_item)
     
     return enriched_results
@@ -245,37 +300,18 @@ def compute_default_output_path(input_path: str) -> str:
 
 
 if __name__ == "__main__":
-    import argparse
-    parser = argparse.ArgumentParser(
-        description="Rank papers using GPT. Input: JSON with papers. Output: Ranked JSON with all original fields + position and rationale."
-    )
-    parser.add_argument("input_json", help="Path to input JSON list of papers")
-    parser.add_argument(
-        "-o", "--output",
-        help="Output path for ranked JSON. If not provided, saves to oracl/data/<conf>/<year>/ranked_papers.json"
-    )
-    parser.add_argument("--model", default="gpt-5", help="OpenAI model to use (default: gpt-5)")
-    parser.add_argument(
-        "--criteria",
-        nargs="+",
-        help="Custom ranking criteria (space-separated). If not provided, uses default criteria."
-    )
-    args = parser.parse_args()
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    input_path = os.path.join(script_dir, "data", "backtest", "idea_abstracts_llama.json")
+    output_path = os.path.join(script_dir, "data", "backtest", "ranked_papers1.json")
 
-    with open(args.input_json, "r", encoding="utf-8") as f:
+    if not os.path.exists(input_path):
+        print(f"Input file not found: {input_path}")
+        exit(1)
+
+    with open(input_path, "r", encoding="utf-8") as f:
         papers_dicts = json.load(f)
 
-    kwargs = {"model": args.model}
-    if args.criteria:
-        kwargs["criteria"] = args.criteria
-
-    results = rank_papers_from_dicts(papers_dicts, **kwargs)
-    
-    # Determine output path
-    if args.output:
-        output_path = args.output
-    else:
-        output_path = compute_default_output_path(args.input_json)
+    results = rank_papers_from_dicts(papers_dicts, model="gpt-5")
     
     # Ensure output directory exists
     output_dir = os.path.dirname(output_path)
