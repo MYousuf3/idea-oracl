@@ -32,7 +32,6 @@ def save_records(records: List[Dict[str, Any]], output_path: str) -> None:
     with open(output_path, "w") as f:
         json.dump(records, f, indent=2, ensure_ascii=False)
 
-
 def build_prompt(title: str, abstract: str) -> str:
     """Build a Llama 3.1 instruct-style prompt for idea abstract generation"""
     definition = (
@@ -45,6 +44,41 @@ def build_prompt(title: str, abstract: str) -> str:
         "Do not include any numbers, dataset sizes, epochs, hyperparameters, training or implementation details, "
         "or benchmark-specific scores. Keep the core problem, method, and novelty. Write concise, clear prose. "
         "Output only the rewritten idea abstract, without any preamble or explanation."
+)
+    
+    # Llama 3.1 Instruct format (no title in the user message)
+    system_message = f"{definition}\n\n{instructions}"
+    user_message = f"Abstract: {abstract}\n\nIdea abstract:"
+    
+    prompt = f"""<|begin_of_text|><|start_header_id|>system<|end_header_id|>
+
+{system_message}<|eot_id|><|start_header_id|>user<|end_header_id|>
+
+{user_message}<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+"""
+    return prompt
+
+
+def build_prompt_proposal(title: str, abstract: str) -> str:
+    """Build a Llama 3.1 instruct-style prompt for idea proposal generation"""
+    definition = (
+        "We define an 'idea abstract' as a version of the original abstract that "
+        "deliberately omits specific results, implementation details, and performance metrics, "
+        "while preserving the core problem statement, proposed approach, and claimed novelty."
+    )
+    instructions = (
+        "Rewrite the following paper abstract into an idea abstract. "
+        "Do not include any numbers, dataset sizes, epochs, hyperparameters, training or implementation details, "
+        "or benchmark-specific scores. Keep the core problem, method, and novelty. Write concise, clear prose. "
+        "Output only the rewritten idea abstract, without any preamble or explanation."
+        "Answer with the following format:"
+
+        "1. Title: A concise statement of the main research question to be used as the paper title."
+        "2. Problem Statement: Clearly define the problem your research intends to address. Explain clearly why this problem is interesting and important."
+        "3. Motivation: Explain why existing methods are not good enough to solve the problem, and explain the inspiration behind the new proposed method. You should also motivate why the proposed method would work better than existing baselines on the problem."
+        "4. Proposed Method: Explain how the proposed method works, describe all the essential steps."
+            # "5. Step-by-Step Experiment Plan: Break down every single step of the experiments, make sure every step is executable. Cover all essential details such as the datasets, models, and metrics to be used. If the project involves prompting, give some example prompts for each step."
     )
     
     # Llama 3.1 Instruct format (no title in the user message)
@@ -93,7 +127,8 @@ def generate_idea_abstracts(
         stop_token_ids=[tokenizer.eos_token_id] if getattr(tokenizer, "eos_token_id", None) is not None else None,
     )
 
-    prompts: List[str] = []
+    idea_prompts: List[str] = []
+    proposal_prompts: List[str] = []
     for rec in records:
         title = rec.get("title") or ""
         abstract = rec.get("abstract") or ""
@@ -108,17 +143,26 @@ def generate_idea_abstracts(
                 abstract_placeholder = True
 
         if not abstract_placeholder:
-            prompts.append(build_prompt(title, abstract))
+            idea_prompts.append(build_prompt(title, abstract))
+            proposal_prompts.append(build_prompt_proposal(title, abstract))
         else:
             # Keep alignment with outputs (invalid/empty abstract -> empty idea abstract)
-            prompts.append("")
+            idea_prompts.append("")
+            proposal_prompts.append("")
 
-    outputs = llm.generate(prompts, sampling_params=sampling_params)
-    results: List[str] = []
-    for out in outputs:
+    idea_outputs = llm.generate(idea_prompts, sampling_params=sampling_params)
+    idea_results: List[str] = []
+    for out in idea_outputs:
         text = out.outputs[0].text if out.outputs else ""
-        results.append(text.strip())
-    return results
+        idea_results.append(text.strip())
+
+    proposal_outputs = llm.generate(proposal_prompts, sampling_params=sampling_params)
+    proposal_results: List[str] = []
+    for out in proposal_outputs:
+        text = out.outputs[0].text if out.outputs else ""
+        proposal_results.append(text.strip())
+    
+    return idea_results, proposal_results
 
 
 def detect_gpu_count() -> int:
@@ -185,7 +229,7 @@ def main() -> None:
         raise ValueError("Number of GPUs must be >= 1. Set TENSOR_PARALLEL_SIZE_OVERRIDE or ensure CUDA is visible.")
     records = load_records(args.input)
 
-    generations = generate_idea_abstracts(
+    idea_generations, proposal_generations = generate_idea_abstracts(
         records=records,
         model_name=args.model,
         tensor_parallel_size=tps,
@@ -195,9 +239,10 @@ def main() -> None:
     )
 
     output_records: List[Dict[str, Any]] = []
-    for rec, idea in zip(records, generations):
+    for rec, idea, proposal in zip(records, idea_generations, proposal_generations):
         merged = dict(rec)
         merged["idea_abstract"] = idea
+        merged["proposal"] = proposal
         output_records.append(merged)
 
     out_path = args.output or compute_default_output_path(args.input)
