@@ -5,6 +5,7 @@ import arxiv
 import json
 from tqdm import tqdm
 import time
+import requests
 
 def save_json(data, path):
     with open(path, 'w') as file:
@@ -32,6 +33,48 @@ def get_arxiv_id(client, title):
         print(f"Could not find paper_id for {title}")
         return None
 
+def get_citation_count(arxiv_id, title):
+    """
+    Get citation count from Semantic Scholar API using arXiv ID or title.
+    Returns the citation count or None if not found.
+    """
+    try:
+        # First try with arXiv ID (more reliable)
+        if arxiv_id:
+            url = f"https://api.semanticscholar.org/graph/v1/paper/ARXIV:{arxiv_id}"
+            params = {'fields': 'citationCount'}
+            response = requests.get(url, params=params, timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                citation_count = data.get('citationCount', 0)
+                return citation_count if citation_count is not None else 0
+            elif response.status_code == 404:
+                print(f"Paper not found in Semantic Scholar: {arxiv_id}")
+            else:
+                print(f"Semantic Scholar API error (status {response.status_code}) for {arxiv_id}")
+        
+        # Fallback: try searching by title if arXiv ID didn't work
+        if title:
+            search_url = "https://api.semanticscholar.org/graph/v1/paper/search"
+            params = {
+                'query': title,
+                'fields': 'citationCount,title',
+                'limit': 1
+            }
+            response = requests.get(search_url, params=params, timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data.get('data') and len(data['data']) > 0:
+                    citation_count = data['data'][0].get('citationCount', 0)
+                    return citation_count if citation_count is not None else 0
+        
+        return None
+    except Exception as e:
+        print(f"Error fetching citation count: {e}")
+        return None
+
 def download_paper(client, paper_id, path):
     try:
         paper = next(client.results(arxiv.Search(id_list=[paper_id])))
@@ -47,7 +90,7 @@ def collect_papers(client, openreview_clients, conference, year, base_path, max_
     os.makedirs(os.path.join(path, 'extracted_files'), exist_ok=True)
 
     # Initialize or load existing papers data
-    papers_file = os.path.join(path, 'papers.json')
+    papers_file = os.path.join(path, 'papers_with_citations.json')
     if os.path.exists(papers_file):
         papers_data = open_json(papers_file)
         existing_ids = set(paper['submission_id'] for paper in papers_data)
@@ -149,6 +192,18 @@ def collect_papers(client, openreview_clients, conference, year, base_path, max_
             
             if paper_id:
                 paper_path = os.path.join(path, f"tar_files/{paper_id}.tar.gz")
+                
+                # Get citation count from Semantic Scholar
+                print(f"Fetching citation count for {paper_id}")
+                citation_count = get_citation_count(paper_id, title)
+                if citation_count is not None:
+                    print(f"Found {citation_count} citations")
+                else:
+                    print(f"Could not fetch citation count")
+                
+                # Respect Semantic Scholar rate limits (100 req/5min = ~1 req/3sec)
+                time.sleep(3)
+                
                 if not os.path.exists(paper_path):
                     print(f"Downloading paper {paper_id}")
                     if download_paper(client, paper_id, path):
@@ -157,7 +212,8 @@ def collect_papers(client, openreview_clients, conference, year, base_path, max_
                             'paper_id': paper_id,
                             'title': title,
                             'conference': conference,
-                            'year': year
+                            'year': year,
+                            'citation_count': citation_count
                         }
                         papers_data.append(paper_info)
                         papers_collected += 1
@@ -171,7 +227,8 @@ def collect_papers(client, openreview_clients, conference, year, base_path, max_
                         'paper_id': paper_id,
                         'title': title,
                         'conference': conference,
-                        'year': year
+                        'year': year,
+                        'citation_count': citation_count
                     }
                     papers_data.append(paper_info)
                     papers_collected += 1
